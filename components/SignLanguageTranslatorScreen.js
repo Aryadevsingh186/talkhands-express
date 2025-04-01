@@ -58,37 +58,39 @@ export default function SignLanguageTranslatorScreen() {
 
   // Permission setup
   useEffect(() => {
-    const setupPermissions = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setWebStream(stream);
+    if (Platform.OS === 'web') {
+      const setupPermissions = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            setWebStream(stream);
+          }
+          setHasCameraPermission(true);
+        } catch (error) {
+          console.error('Camera access denied:', error);
+          setHasCameraPermission(false);
         }
-        setHasCameraPermission(true);
-      } catch (error) {
-        console.error('Camera access denied:', error);
-        setHasCameraPermission(false);
-      }
-    };
+      };
 
-    setupPermissions();
+      setupPermissions();
 
-    return () => {
-      if (webStream) {
-        webStream.getTracks().forEach(track => track.stop());
-      }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
+      return () => {
+        if (webStream) {
+          webStream.getTracks().forEach(track => track.stop());
+        }
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      };
+    }
   }, []);
 
   // Enhanced Text-to-Speech function
   const speakText = () => {
-    if (!translatedText || !('speechSynthesis' in window)) return;
+    if (Platform.OS !== 'web' || !translatedText || !('speechSynthesis' in window)) return;
     
     setIsSpeaking(true);
     const utterance = new SpeechSynthesisUtterance(translatedText);
@@ -107,7 +109,7 @@ export default function SignLanguageTranslatorScreen() {
   };
 
   const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
+    if (Platform.OS === 'web' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
@@ -129,17 +131,19 @@ export default function SignLanguageTranslatorScreen() {
   // Camera Capture Methods
   const captureImage = async () => {
     try {
-      if (videoRef.current && canvasRef.current) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const imageDataUrl = canvas.toDataURL('image/jpeg');
-        setCapturedImage(imageDataUrl);
+      if (Platform.OS === 'web') {
+        if (videoRef.current && canvasRef.current) {
+          const video = videoRef.current;
+          const canvas = canvasRef.current;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          const context = canvas.getContext('2d');
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          
+          const imageDataUrl = canvas.toDataURL('image/jpeg');
+          setCapturedImage(imageDataUrl);
+        }
       }
 
       setIsProcessing(true);
@@ -161,7 +165,7 @@ export default function SignLanguageTranslatorScreen() {
   };
 
   const downloadImage = async () => {
-    if (capturedImage) {
+    if (Platform.OS === 'web' && capturedImage) {
       const link = document.createElement('a');
       link.href = capturedImage;
       link.download = `sign_language_capture_${Date.now()}.jpg`;
