@@ -6,9 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
-import { Camera, Mic, ArrowRight, X, Download, Languages, Settings, ChevronDown, ChevronUp, Volume2, MicOff } from "lucide-react";
+import { Camera, ArrowRight, X, Download, Languages, Settings, ChevronDown, ChevronUp, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Language options for TTS
@@ -26,7 +26,6 @@ export default function Index() {
   const [inputText, setInputText] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [recordingStatus, setRecordingStatus] = useState('idle');
   const [ttsSettings, setTtsSettings] = useState({
     language: 'en',
     pitch: 1,
@@ -36,7 +35,6 @@ export default function Index() {
   const [showSettings, setShowSettings] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [hasCameraAccess, setHasCameraAccess] = useState(false);
-  const [hasAudioAccess, setHasAudioAccess] = useState(false);
   
   // Refs
   const videoRef = useRef(null);
@@ -67,19 +65,6 @@ export default function Index() {
         toast({
           title: "Camera access denied",
           description: "Please enable camera access to use this feature.",
-          variant: "destructive"
-        });
-      }
-
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        setHasAudioAccess(true);
-      } catch (error) {
-        console.error('Audio access denied:', error);
-        setHasAudioAccess(false);
-        toast({
-          title: "Microphone access denied",
-          description: "Please enable microphone access to use the voice feature.",
           variant: "destructive"
         });
       }
@@ -182,68 +167,6 @@ export default function Index() {
     }
   };
 
-  // Voice Recording Methods
-  const startRecording = async () => {
-    if (!hasAudioAccess) {
-      toast({
-        title: "Microphone access required",
-        description: "Please enable microphone access to use this feature.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setRecordingStatus('recording');
-      toast({
-        title: "Recording started",
-        description: "Speak clearly for best results.",
-      });
-      
-      // Simulate recording process - in a real app, this would use the Web Audio API
-      setTimeout(() => {
-        toast({
-          title: "Listening...",
-          description: "Press the microphone button again to stop recording.",
-        });
-      }, 1000);
-    } catch (error) {
-      console.error('Recording start error:', error);
-      toast({
-        title: "Recording error",
-        description: "There was an error starting the recording.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopRecording = async () => {
-    try {
-      setRecordingStatus('idle');
-      
-      toast({
-        title: "Processing audio",
-        description: "Converting speech to text...",
-      });
-      
-      // Simulate processing delay - in a real app, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setTranslatedText('This is a sample voice recognition text for demonstration purposes.');
-      
-      toast({
-        title: "Speech recognized",
-        description: "Your speech has been converted to text.",
-      });
-    } catch (error) {
-      console.error('Recording stop error:', error);
-      toast({
-        title: "Processing error",
-        description: "There was an error processing the recording.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const resetTranslation = () => {
     setTranslatedText('');
     setInputText('');
@@ -305,7 +228,7 @@ export default function Index() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="bg-violet-950/90 backdrop-blur-xl border border-indigo-500/30 text-indigo-100">
-                <h2 className="text-xl font-bold mb-4">Application Settings</h2>
+                <DialogTitle>Application Settings</DialogTitle>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <h3 className="font-medium">Theme</h3>
@@ -326,16 +249,6 @@ export default function Index() {
                       </Badge>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-medium">Microphone</h3>
-                    <div className="flex items-center justify-between">
-                      <span>Access Status</span>
-                      <Badge variant={hasAudioAccess ? "default" : "destructive"}>
-                        {hasAudioAccess ? "Granted" : "Denied"}
-                      </Badge>
-                    </div>
-                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -346,14 +259,10 @@ export default function Index() {
       <main className="container mx-auto p-4 py-8 space-y-6">
         {/* Input Methods Tabs */}
         <Tabs defaultValue="camera" className="w-full">
-          <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto mb-6 bg-black/20 border border-white/10">
+          <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto mb-6 bg-black/20 border border-white/10">
             <TabsTrigger value="camera" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
               <Camera className="h-4 w-4 mr-2" />
               Camera
-            </TabsTrigger>
-            <TabsTrigger value="voice" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
-              <Mic className="h-4 w-4 mr-2" />
-              Voice
             </TabsTrigger>
             <TabsTrigger value="text" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
               <ArrowRight className="h-4 w-4 mr-2" />
@@ -458,78 +367,6 @@ export default function Index() {
               </Card>
             </TabsContent>
             
-            {/* Voice Tab */}
-            <TabsContent value="voice" className="w-full max-w-2xl">
-              <Card className="bg-black/20 backdrop-blur-md border-indigo-400/20">
-                <div className="p-6 space-y-4 flex flex-col items-center">
-                  <h2 className="text-xl font-semibold text-indigo-100">Voice Recognition</h2>
-                  
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <div className={cn(
-                      "relative flex items-center justify-center",
-                      recordingStatus === 'recording' && "after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-red-500/30"
-                    )}>
-                      <Button
-                        variant="secondary"
-                        className={cn(
-                          "rounded-full w-24 h-24 p-0 shadow-lg transition-all duration-300 border-4",
-                          recordingStatus === 'recording' 
-                            ? "bg-gradient-to-tr from-red-600 to-red-400 border-red-300/50 hover:from-red-500 hover:to-red-300"
-                            : "bg-gradient-to-tr from-indigo-600 to-purple-600 border-indigo-300/50 hover:from-indigo-500 hover:to-purple-500"
-                        )}
-                        onClick={recordingStatus === 'recording' ? stopRecording : startRecording}
-                        disabled={!hasAudioAccess}
-                      >
-                        {recordingStatus === 'recording' ? (
-                          <div className="flex items-center justify-center animate-pulse">
-                            <MicOff className="h-10 w-10 text-white" />
-                          </div>
-                        ) : (
-                          <Mic className="h-10 w-10 text-white" />
-                        )}
-                      </Button>
-                    </div>
-                    
-                    <p className="text-indigo-200 mt-6">
-                      {recordingStatus === 'recording' 
-                        ? "Recording... Tap to stop" 
-                        : "Tap microphone to start recording"}
-                    </p>
-                    
-                    {!hasAudioAccess && (
-                      <div className="mt-4 text-center">
-                        <p className="text-yellow-200 mb-2">Microphone access is required for this feature</p>
-                        <Button 
-                          variant="secondary" 
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white border-none"
-                          onClick={() => {
-                            navigator.mediaDevices.getUserMedia({ audio: true })
-                              .then(() => {
-                                setHasAudioAccess(true);
-                                toast({
-                                  title: "Microphone access granted",
-                                  description: "You can now use the voice recognition feature.",
-                                });
-                              })
-                              .catch(err => {
-                                console.error("Microphone access error:", err);
-                                toast({
-                                  title: "Microphone access denied",
-                                  description: "Please enable microphone access in your browser settings.",
-                                  variant: "destructive"
-                                });
-                              });
-                          }}
-                        >
-                          Enable Microphone
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </TabsContent>
-            
             {/* Text Tab */}
             <TabsContent value="text" className="w-full max-w-2xl">
               <Card className="bg-black/20 backdrop-blur-md border-indigo-400/20">
@@ -587,8 +424,7 @@ export default function Index() {
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-violet-950/90 backdrop-blur-xl border border-indigo-500/30 text-indigo-100">
-                      <h2 className="text-xl font-bold mb-4">Speech Settings</h2>
-                      
+                      <DialogTitle>Speech Settings</DialogTitle>
                       <div className="space-y-6">
                         <div className="space-y-2">
                           <h3 className="font-medium">Language</h3>
