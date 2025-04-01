@@ -133,16 +133,34 @@ export default function SignLanguageTranslatorScreen() {
     try {
       if (Platform.OS === 'web') {
         if (videoRef.current && canvasRef.current) {
+          console.log("Capturing image from video");
           const video = videoRef.current;
           const canvas = canvasRef.current;
+          
+          // Make sure the video has loaded metadata
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            console.error("Video dimensions are not available");
+            return;
+          }
+          
+          // Set the canvas dimensions to match the video
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           
+          console.log(`Canvas dimensions set to ${canvas.width}x${canvas.height}`);
+          
+          // Draw the current video frame to the canvas
           const context = canvas.getContext('2d');
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           
-          const imageDataUrl = canvas.toDataURL('image/jpeg');
+          // Convert the canvas to a data URL
+          const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+          console.log("Image captured successfully:", imageDataUrl.substring(0, 50) + "...");
+          
+          // Set the captured image
           setCapturedImage(imageDataUrl);
+        } else {
+          console.error("Video or canvas refs not available");
         }
       }
 
@@ -263,13 +281,17 @@ export default function SignLanguageTranslatorScreen() {
                       ) : (
                         <div className="relative bg-black/30 rounded-xl overflow-hidden mx-auto" style={{ width: '400px', height: '300px' }}>
                           {hasCameraPermission ? (
-                            <video 
-                              ref={videoRef} 
-                              autoPlay 
-                              playsInline
-                              muted
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                                onLoadedMetadata={() => console.log("Video metadata loaded")}
+                              />
+                              <canvas ref={canvasRef} className="hidden" />
+                            </>
                           ) : (
                             <div className="flex items-center justify-center h-full bg-violet-900/20 text-center p-4">
                               <div>
@@ -300,16 +322,13 @@ export default function SignLanguageTranslatorScreen() {
                           
                           {hasCameraPermission && (
                             <button
-                              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full w-14 h-14 p-0 bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none shadow-lg"
+                              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full w-14 h-14 p-0 bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none shadow-lg cursor-pointer"
                               onClick={captureImage}
                               disabled={isProcessing}
                             >
                               <Camera className="h-6 w-6 text-white" />
                             </button>
                           )}
-                          
-                          {/* Hidden canvas for capturing images */}
-                          <canvas ref={canvasRef} className="hidden" />
                         </div>
                       )}
                     </div>
@@ -334,7 +353,7 @@ export default function SignLanguageTranslatorScreen() {
                       />
                       
                       <button 
-                        className="w-full bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
+                        className="w-full bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center cursor-pointer"
                         onClick={handleTextTranslation}
                       >
                         <ArrowRight className="h-4 w-4 mr-2" />
@@ -358,7 +377,7 @@ export default function SignLanguageTranslatorScreen() {
                 <div className="flex items-center space-x-2">
                   <button 
                     onClick={resetTranslation}
-                    className="text-indigo-200 hover:text-white hover:bg-white/10 p-2 bg-transparent border-none rounded-md"
+                    className="text-indigo-200 hover:text-white hover:bg-white/10 p-2 bg-transparent border-none rounded-md cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -366,7 +385,7 @@ export default function SignLanguageTranslatorScreen() {
                   <div className="relative">
                     <button 
                       onClick={toggleSettings}
-                      className="text-indigo-200 hover:text-white hover:bg-white/10 flex items-center space-x-1 bg-transparent border-none py-1 px-3 rounded-md"
+                      className="text-indigo-200 hover:text-white hover:bg-white/10 flex items-center space-x-1 bg-transparent border-none py-1 px-3 rounded-md cursor-pointer"
                     >
                       <span className="uppercase text-xs font-bold">{ttsSettings.language}</span>
                       {showSettings ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -383,8 +402,8 @@ export default function SignLanguageTranslatorScreen() {
                                 <button 
                                   key={lang.code}
                                   className={`px-3 py-1 rounded-md ${ttsSettings.language === lang.code 
-                                    ? "bg-indigo-600 hover:bg-indigo-700 text-white border-none" 
-                                    : "border border-indigo-500/50 bg-indigo-950/50 text-indigo-200"
+                                    ? "bg-indigo-600 hover:bg-indigo-700 text-white border-none cursor-pointer" 
+                                    : "border border-indigo-500/50 bg-indigo-950/50 text-indigo-200 cursor-pointer"
                                   }`}
                                   onClick={() => updateTtsSetting('language', lang.code)}
                                 >
@@ -432,7 +451,7 @@ export default function SignLanguageTranslatorScreen() {
                   
                   <button
                     onClick={isSpeaking ? stopSpeaking : speakText}
-                    className={`text-indigo-200 hover:text-white hover:bg-white/10 p-2 bg-transparent border-none rounded-md relative ${isSpeaking ? "text-indigo-400" : ""}`}
+                    className={`text-indigo-200 hover:text-white hover:bg-white/10 p-2 bg-transparent border-none rounded-md relative cursor-pointer ${isSpeaking ? "text-indigo-400" : ""}`}
                   >
                     {isSpeaking && (
                       <span className="absolute inset-0 animate-ping rounded-full bg-indigo-500/20"></span>
