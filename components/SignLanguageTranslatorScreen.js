@@ -1,18 +1,4 @@
-
 import { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView,
-  TextInput,
-  Platform,
-  Dimensions,
-  Image
-} from 'react-native';
-
-// Import web-compatible components
 import { 
   Camera,
   ArrowRight,
@@ -23,7 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Volume2
-} from 'lucide-react-native';
+} from 'lucide-react';
 
 // Language options for TTS
 const LANGUAGE_OPTIONS = [
@@ -34,9 +20,9 @@ const LANGUAGE_OPTIONS = [
   { code: 'it', name: 'Italian' },
 ];
 
-export default function SignLanguageTranslatorScreen() {
+export default function SignLanguageTranslator() {
   // State variables
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [translatedText, setTranslatedText] = useState('');
   const [inputText, setInputText] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
@@ -54,43 +40,45 @@ export default function SignLanguageTranslatorScreen() {
   // Refs
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [webStream, setWebStream] = useState(null);
+  const streamRef = useRef(null);
 
   // Permission setup
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      const setupPermissions = async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
-          });
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            setWebStream(stream);
-          }
-          setHasCameraPermission(true);
-        } catch (error) {
-          console.error('Camera access denied:', error);
-          setHasCameraPermission(false);
+    const setupCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
         }
-      };
+        setHasCameraPermission(true);
+      } catch (error) {
+        console.error('Camera access denied:', error);
+        setHasCameraPermission(false);
+      }
+    };
 
-      setupPermissions();
-
-      return () => {
-        if (webStream) {
-          webStream.getTracks().forEach(track => track.stop());
-        }
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-        }
-      };
+    // Only setup camera if in camera mode
+    if (translateMode === 'camera') {
+      setupCamera();
     }
-  }, []);
+
+    // Cleanup function to stop stream when component unmounts
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [translateMode]);
 
   // Enhanced Text-to-Speech function
   const speakText = () => {
-    if (Platform.OS !== 'web' || !translatedText || !('speechSynthesis' in window)) return;
+    if (!translatedText || !('speechSynthesis' in window)) return;
     
     setIsSpeaking(true);
     const utterance = new SpeechSynthesisUtterance(translatedText);
@@ -109,7 +97,7 @@ export default function SignLanguageTranslatorScreen() {
   };
 
   const stopSpeaking = () => {
-    if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
@@ -131,37 +119,30 @@ export default function SignLanguageTranslatorScreen() {
   // Camera Capture Methods
   const captureImage = async () => {
     try {
-      if (Platform.OS === 'web') {
-        if (videoRef.current && canvasRef.current) {
-          console.log("Capturing image from video");
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
-          
-          // Make sure the video has loaded metadata
-          if (video.videoWidth === 0 || video.videoHeight === 0) {
-            console.error("Video dimensions are not available");
-            return;
-          }
-          
-          // Set the canvas dimensions to match the video
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          
-          console.log(`Canvas dimensions set to ${canvas.width}x${canvas.height}`);
-          
-          // Draw the current video frame to the canvas
-          const context = canvas.getContext('2d');
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // Convert the canvas to a data URL
-          const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-          console.log("Image captured successfully:", imageDataUrl.substring(0, 50) + "...");
-          
-          // Set the captured image
-          setCapturedImage(imageDataUrl);
-        } else {
-          console.error("Video or canvas refs not available");
-        }
+      if (videoRef.current && canvasRef.current) {
+        console.log("Capturing image from video");
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        
+        // Set the canvas dimensions to match the video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        console.log(`Canvas dimensions set to ${canvas.width}x${canvas.height}`);
+        
+        // Draw the current video frame to the canvas
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert the canvas to a data URL
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        console.log("Image captured successfully");
+        
+        // Set the captured image
+        setCapturedImage(imageDataUrl);
+      } else {
+        console.error("Video or canvas refs not available");
+        return;
       }
 
       setIsProcessing(true);
@@ -183,7 +164,7 @@ export default function SignLanguageTranslatorScreen() {
   };
 
   const downloadImage = async () => {
-    if (Platform.OS === 'web' && capturedImage) {
+    if (capturedImage) {
       const link = document.createElement('a');
       link.href = capturedImage;
       link.download = `sign_language_capture_${Date.now()}.jpg`;
@@ -198,14 +179,19 @@ export default function SignLanguageTranslatorScreen() {
     }
   };
 
-  if (Platform.OS !== 'web') {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>This application is optimized for web.</Text>
-        <Text style={styles.subtitle}>Please open on a web browser for full functionality.</Text>
-      </View>
-    );
-  }
+  const requestCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+      setHasCameraPermission(true);
+    } catch (err) {
+      console.error("Camera access error:", err);
+      alert("Camera access denied. Please enable camera access in your browser settings.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-900 to-violet-900">
@@ -288,7 +274,6 @@ export default function SignLanguageTranslatorScreen() {
                                 playsInline
                                 muted
                                 className="w-full h-full object-cover"
-                                onLoadedMetadata={() => console.log("Video metadata loaded")}
                               />
                               <canvas ref={canvasRef} className="hidden" />
                             </>
@@ -299,20 +284,7 @@ export default function SignLanguageTranslatorScreen() {
                                 <p className="text-indigo-200">Camera access is required for this feature</p>
                                 <button 
                                   className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white border-none px-4 py-2 rounded-md"
-                                  onClick={() => {
-                                    navigator.mediaDevices.getUserMedia({ video: true })
-                                      .then(stream => {
-                                        if (videoRef.current) {
-                                          videoRef.current.srcObject = stream;
-                                          setWebStream(stream);
-                                        }
-                                        setHasCameraPermission(true);
-                                      })
-                                      .catch(err => {
-                                        console.error("Camera access error:", err);
-                                        alert("Camera access denied. Please enable camera access in your browser settings.");
-                                      });
-                                  }}
+                                  onClick={requestCameraPermission}
                                 >
                                   Enable Camera
                                 </button>
@@ -321,13 +293,15 @@ export default function SignLanguageTranslatorScreen() {
                           )}
                           
                           {hasCameraPermission && (
-                            <button
-                              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full w-14 h-14 p-0 bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none shadow-lg cursor-pointer"
-                              onClick={captureImage}
-                              disabled={isProcessing}
-                            >
-                              <Camera className="h-6 w-6 text-white" />
-                            </button>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <button
+                                className="rounded-full w-16 h-16 bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none shadow-lg cursor-pointer flex items-center justify-center"
+                                onClick={captureImage}
+                                disabled={isProcessing}
+                              >
+                                <Camera className="h-8 w-8 text-white" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
@@ -481,25 +455,3 @@ export default function SignLanguageTranslatorScreen() {
     </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#1a1a2e',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-  },
-});
